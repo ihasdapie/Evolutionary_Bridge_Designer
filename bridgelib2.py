@@ -17,9 +17,9 @@ What we need to calculate:
 	- Moment of inertia (done)
 	- Midspan deflection under 400N
 	- Determine P value that will cause 16 MPa tensile stress @max and 6 MPa tensile stress @max (done, needs checking)
-	- Determine P value that will cause 4 MPa shear stress ()
+	- Determine P value that will cause 4 MPa shear stress (Done)
 	- Check P for plate buckling (top flange, flex of web, shear of web)
-	- 
+	- Check P for plate buckling (Edge of top flange!)
 '''
 
 import math as math
@@ -39,7 +39,7 @@ mandatory_length = 1280
 split_point = 798 #from right to left: go from cross section A to B 
 
 total_matboard = 813*1016 #826008
-total_matboard = 800*1000
+total_matboard = 600*1000
 # total_matboard = 1000*1000
 
 ###ML VARIABLES###
@@ -348,7 +348,14 @@ class Bridge:
 		# print("Tau_crit = ",Tau_crit)
 		# print("22x10^3,",Q)
 
-		return [P1, P2, P3]
+		#pt. 4: Compressive buckling at the edge of the thing.
+		t = flange_thickness
+		b = (flange_width - web_dist)/2
+		# sig_comp_crit = ((0.425*(pi**2)*E)/(12*(1-mu**2)))*((flange_thickness/((flange_width-web_dist)/2) ))**2);
+		P = ((I*0.425*(pi**2)*E)/(83.05*y*12*(1-mu**2)))*((t/b)**2);
+		P4 = P
+
+		return [P1, P2, P3, P4]
 
 	def get_buckling_failure_B(self):
 		height = self.height
@@ -390,7 +397,14 @@ class Bridge:
 		P = V/0.5
 		P3 = P
 
-		return [P1, P2, P3]
+		#pt. 4: Compressive buckling at the edge of the thing.
+		t = bottom_flange_thickness
+		b = (flange_width - web_dist)/2
+		# sig_comp_crit = ((0.425*(pi**2)*E)/(12*(1-mu**2)))*((flange_thickness/((flange_width-web_dist)/2) ))**2);
+		P = ((I*0.425*(pi**2)*E)/(94.94*y*12*(1-mu**2)))*((t/b)**2);
+		P4 = P
+
+		return [P1, P2, P3, P4]
 
 	def get_amount_paper(self):
 		height = self.height
@@ -407,6 +421,8 @@ class Bridge:
 
 		paper_used = (flange_width*length*num_flange_layers_top)+(num_web_layers*2*(height-top_flange_thickness)*length)
 		paper_used += num_flange_layers_bottom*flange_width*(mandatory_length-split_point)
+		num_diaphragms = length/dia_dist
+		area_dia = num_diaphragms*(height-top_flange_thickness)*web_dist;
 
 		return paper_used
 
@@ -434,6 +450,8 @@ class Bridge:
 			# print("spatial wack")
 			return False
 		if flange_width < 100:
+			return False
+		if web_dist < 50:
 			return False
 
 		return True
@@ -465,6 +483,7 @@ class Bridge:
 		print("Maximum for Compressive Flange Buckling: ",b1.get_buckling_failure_A()[0])
 		print("Maximum for Flexural Compression @Top of Web: ",b1.get_buckling_failure_A()[1])
 		print("Maximum for Shear Buckling @ Top of Web: ",b1.get_buckling_failure_A()[2])
+		print("Maximum for Shear Buckling @ Side of Top Flange: ",b1.get_buckling_failure_A()[3])
 		print("\n=== WEIGHT BEARING OF THE BRIDGE: SECTION B ===")
 		print("I value: ",b1.get_I_B())
 		print("Centroid: ",b1.get_centroid_B())
@@ -474,9 +493,10 @@ class Bridge:
 		print("Maximum for Compressive Flange Buckling: ",b1.get_buckling_failure_B()[0])
 		print("Maximum for Flexural Compression @Top of Web: ",b1.get_buckling_failure_B()[1])
 		print("Maximum for Shear Buckling @ Top of Web: ",b1.get_buckling_failure_B()[2])
+		print("Maximum for Shear Buckling @ Side of Top Flange: ",b1.get_buckling_failure_B()[3])
 		print("---------")
-		print("Total load bearing ability: ",self.get_max_load())
-		print("Amount of paper used: ",self.get_amount_paper())
+		print("\033[1mTotal load bearing ability: ",self.get_max_load(),"\033[0m")
+		print("Amount of paper used: ",self.get_amount_paper(),"/",total_matboard)
 		print("|====================================|")
 
 
@@ -538,17 +558,16 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 
 #paper_thickness, height, length, flange_width, num_flange_layers_top, num_flange_layers_bottom, num_web_layers, web_dist, dia_dist):
 # b1 = Bridge(1.27, 102.54, mandatory_length, 105, 2, 2, 1, 55, 91.43)
-b1 = Bridge(1.27, 10.54, mandatory_length, 105, 2, 2, 1, 55, 1000)
+b1 = Bridge(1.27, 102.54, mandatory_length, 105, 2, 2, 1, 55, 91.45)
 
 
 b2 = mutate(b1)
 
 print("Validity of Starting Design: ",b1.is_valid())
 print("Load bearing ability of Starting Design",b1.get_max_load())
-
 print("\033[1mNow evolving...\033[0m")
 
-num_generations = 1000000
+num_generations = 10000
 
 cnt = 0
 
@@ -566,5 +585,3 @@ for cnt in tqdm(range(num_generations)):
 
 b1.report()
 print("Validity of proposed design: ",b1.is_valid())
-
-
