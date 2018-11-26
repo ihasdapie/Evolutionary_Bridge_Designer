@@ -120,7 +120,7 @@ class Bridge:
 
 
 		AY = top_flange_aY + web_aY + bottom_flange_aY
-		yb = AY/(top_flange_a + web_a + bottom_flange_aY)
+		yb = AY/(top_flange_a + web_a + bottom_flange_a)
 
 		y_top_flange = top_flange_Y-yb;
 		y_web = web_Y-yb;
@@ -140,24 +140,53 @@ class Bridge:
 		return sum_ay2+sum_I
 
 
-	def get_centroid(self):
+	def get_centroid_A(self):
 		height = self.height
 		flange_width = self.flange_width
 		web_dist = self.web_dist
-		flange_thickness = self.flange_thickness
+		top_flange_thickness = self.top_flange_thickness
 		web_thickness = self.web_thickness
 		length = self.length
 		dia_dist = self.dia_dist
 
-		flange_a = flange_width*flange_thickness
-		web_a = 2*web_thickness*(height-flange_thickness)
-		flange_Y = height - flange_thickness/2
-		web_Y = (height - flange_thickness)/2
+		flange_a = flange_width*top_flange_thickness
+		web_a = 2*web_thickness*(height-top_flange_thickness)
+		flange_Y = height - top_flange_thickness/2
+		web_Y = (height - top_flange_thickness)/2
 		flange_aY = flange_a*flange_Y
 		web_aY = web_a * web_Y
 
 		AY = flange_aY + web_aY
 		yb = AY/(flange_a + web_a)
+
+		return yb
+
+	def get_centroid_B(self):
+		height = self.height
+		flange_width = self.flange_width
+		web_dist = self.web_dist
+		top_flange_thickness = self.top_flange_thickness
+		bottom_flange_thickness = self.bottom_flange_thickness
+		web_thickness = self.web_thickness
+		length = self.length
+		dia_dist = self.dia_dist
+
+
+
+		top_flange_a = flange_width*top_flange_thickness
+		web_a = 2*web_thickness*(height-top_flange_thickness)
+		top_flange_Y = (height - top_flange_thickness/2)+bottom_flange_thickness
+		web_Y = ((height - top_flange_thickness)/2)+bottom_flange_thickness
+		top_flange_aY = top_flange_a*top_flange_Y
+		web_aY = web_a * web_Y
+
+		bottom_flange_a = flange_width*bottom_flange_thickness
+		bottom_flange_Y = bottom_flange_thickness/2
+		bottom_flange_aY = bottom_flange_a*bottom_flange_Y
+
+
+		AY = top_flange_aY + web_aY + bottom_flange_aY
+		yb = AY/(top_flange_a + web_a + bottom_flange_a)
 
 		return yb
 
