@@ -230,13 +230,11 @@ class Bridge:
 		M = (max_tensile*I)/y #maximum moment that this section can endure...
 		P = M/83.05
 		P1 = P
-		print("Maximum P for tensile is:",P1)
 
 		#Calculating P for Compressive failure
 		M = (max_compressive*I)/(height-y)
 		P = M/83.05
 		P2 = P
-		print("Maximum P for compressive is:",P2)
 
 		return min(P1, P2)
 
@@ -245,6 +243,7 @@ class Bridge:
 		flange_width = self.flange_width
 		web_dist = self.web_dist
 		flange_thickness = self.top_flange_thickness
+		bottom_flange_thickness = self.bottom_flange_thickness
 		web_thickness = self.web_thickness
 		length = self.length
 		dia_dist = self.dia_dist
@@ -260,16 +259,14 @@ class Bridge:
 		'''
 
 
-		M = (max_tensile*I)/y #maximum moment that this section can endure...
+		M = (max_tensile*I)/(height+bottom_flange_thickness-y) #maximum moment that this section can endure...
 		P = M/94.94
 		P1 = P
-		print("Maximum P for tensile is:",P1)
 
 		#Calculating P for Compressive failure
-		M = (max_compressive*I)/(height-y)
+		M = (max_compressive*I)/(y)
 		P = M/94.94
 		P2 = P
-		print("Maximum P for compressive is:",P2)
 
 		return min(P1, P2)
 
@@ -323,32 +320,74 @@ class Bridge:
 		height = self.height
 		flange_width = self.flange_width
 		web_dist = self.web_dist
-		flange_thickness = self.flange_thickness
+		flange_thickness = self.top_flange_thickness
 		web_thickness = self.web_thickness
 		length = self.length
 		dia_dist = self.dia_dist
 
-		I = self.get_I()
-		y = self.get_centroid()
+		I = self.get_I_A()
+		y = self.get_centroid_A()
 		Q = web_thickness*2*y*(y/2)
 
 		#pt. 1: Compressive flange
 		sig_comp_crit = ((4*(pi**2)*E)/(12*(1-mu**2)))*((flange_thickness/web_dist)**2);
-		P = ((2*I*4*(pi**2)*E)/(0.5*length*y*12*(1-mu**2)))*((flange_thickness/web_dist)**2);
+		P = ((I*4*(pi**2)*E)/(83.05*y*12*(1-mu**2)))*((flange_thickness/web_dist)**2);
 		P1 = P
 
 		#pt. 2: Flexural compression @ top of web
 		sig_comp_crit = ((6*(pi**2)*E)/(12*(1-mu**2)))*(( web_thickness /(height-y-flange_thickness))**2);
-		P = ((2*I*6*(pi**2)*E)/(0.5*length*y*12*(1-mu**2)))*(( web_thickness /(height-y-flange_thickness))**2);
+		P = ((I*6*(pi**2)*E)/(83.05*y*12*(1-mu**2)))*(( web_thickness /(height-y-flange_thickness))**2);
 		P2 = P
 
 		#pt. 3: shear buckling the top of the web
 		Tau_crit = ((5*(pi**2)*E)/(12*(1-(mu**2))))*(((web_thickness/(height-flange_thickness))**2) + ((web_thickness/dia_dist)**2))
 		V = (Tau_crit*I*(2*web_thickness))/Q
-		P = V*2
+		P = V/0.151
 		P3 = P
 		# print("Tau_crit = ",Tau_crit)
 		# print("22x10^3,",Q)
+
+		return min(P1, P2, P3)
+
+	def get_buckling_failure_B(self):
+		height = self.height
+		flange_width = self.flange_width
+		web_dist = self.web_dist
+		top_flange_thickness = self.top_flange_thickness
+		bottom_flange_thickness = self.bottom_flange_thickness
+		web_thickness = self.web_thickness
+		length = self.length
+		dia_dist = self.dia_dist
+
+		I = self.get_I_B()
+		y = self.get_centroid_B()
+
+		# Q = web_thickness*2*y*(y/2)
+		area_webs = (y-bottom_flange_thickness)*web_thickness*2
+		bottom_area = bottom_flange_thickness*flange_width
+
+		y_bottom = bottom_flange_thickness/2
+		y_web = ((y-bottom_flange_thickness)/2)+bottom_flange_thickness
+
+		centroid2 = ((y_bottom*bottom_area+y_web*area_webs)/(area_webs+bottom_area))
+
+		Q = (y-centroid2)*(area_webs+bottom_area) #TODO: double check this calculation
+
+		#pt. 1: Compressive flange (BOTTOM flange)
+		sig_comp_crit = ((4*(pi**2)*E)/(12*(1-mu**2)))*((bottom_flange_thickness/web_dist)**2);
+		P = ((I*4*(pi**2)*E)/(94.94*y*12*(1-mu**2)))*((bottom_flange_thickness/web_dist)**2);
+		P1 = P
+
+		#pt. 2: Flexural compression @ BOTTOM of web
+		sig_comp_crit = ((6*(pi**2)*E)/(12*(1-mu**2)))*(( web_thickness /(y-bottom_flange_thickness))**2);
+		P = ((I*6*(pi**2)*E)/(94.94*y*12*(1-mu**2)))*(( web_thickness /(y-bottom_flange_thickness))**2);
+		P2 = P
+
+		#pt. 3: shear buckling the top of the web
+		Tau_crit = ((5*(pi**2)*E)/(12*(1-(mu**2))))*(((web_thickness/(height-top_flange_thickness))**2) + ((web_thickness/dia_dist)**2))
+		V = (Tau_crit*I*(2*web_thickness))/Q
+		P = V/0.5
+		P3 = P
 
 		return min(P1, P2, P3)
 
@@ -377,7 +416,11 @@ class Bridge:
 		return True
 
 	def get_max_load_A(self):
-		return min(self.get_max_P_shear(), self.get_max_P_flexural(), self.get_buckling_failure())
+		return min(self.get_max_P_shear_A(), self.get_max_P_flexural_A(), self.get_buckling_failure_A())
+	def get_max_load_B(self):
+		return min(self.get_max_P_shear_B(), self.get_max_P_flexural_B(), self.get_buckling_failure_B())
+	def get_max_load(self):
+		return min(self.get_max_load_A(), self.get_max_load_B())
 
 	def report(self):
 		print("|====================================|")
@@ -385,7 +428,7 @@ class Bridge:
 		print("Flange Width: ",self.flange_width)
 		print("Web Distance: ",self.web_dist)
 		print("Diaphragm Distance: ",self.dia_dist)
-		print("Flange Thickness: ",self.flange_thickness)
+		print("Top Flange Thickness: ",self.top_flange_thickness)
 		print("Web Thickness: ",self.web_thickness)
 		print("---------")
 		print("Total load bearing ability: ",self.get_max_load())
@@ -434,8 +477,12 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 	return b2
 
 
+#1 layer on webs, top flange = 2 each
+# b1 = Bridge(1.27, 180, mandatory_length, 110, 2, 2, 1, 75, 450)
+b1 = Bridge(1.27, 102.54, mandatory_length, 105, 2, 2, 1, 55, 91.43)
 
-b1 = Bridge(1.27, 180, mandatory_length, 110, 3, 3, 1, 75, 450)
-print("Max P for shearing the B section:",b1.get_max_P_shear_A())
+# print("Max P for buckling section B:",b1.get_buckling_failure_B())
+# print("Max P for buckling section A:",b1.get_buckling_failure_A())
+print("Max P in general: ",b1.get_max_load())
 
 
