@@ -13,7 +13,7 @@ Conditions:
 		- Overall length
 		- Distance bw diaphragms
 What we need to calculate:
-	- Centroid location (done)
+	- Centroid location 
 	- Moment of inertia (done)
 	- Midspan deflection under 200N
 	- Determine P value that will cause 16 MPa tensile stress @max and 6 MPa tensile stress @max
@@ -46,34 +46,35 @@ alpha = 10
 
 # Bridge of type discussed in class
 class Bridge:
-	def __init__(self, paper_thickness, height, length, flange_width, num_flange_layers, num_web_layers, web_dist, dia_dist):
+	def __init__(self, paper_thickness, height, length, flange_width, num_flange_layers_top, num_flange_layers_bottom, num_web_layers, web_dist, dia_dist):
 		self.paper_thickness = paper_thickness
-		self.height = height
+		self.height = height #webs + top flange (doesn't include bottom flange)
 		self.flange_width = flange_width
 		self.web_dist = web_dist
 		self.length = length
 		self.dia_dist = dia_dist
-		self.num_flange_layers = num_flange_layers
+		self.num_flange_layers_top = num_flange_layers_top
 		self.num_web_layers = num_web_layers
 
-		self.flange_thickness = num_flange_layers*paper_thickness
+		self.top_flange_thickness = num_flange_layers_top*paper_thickness
+		self.bottom_flange_thickness = num_flange_layers_bottom*paper_thickness
 		self.web_thickness = num_web_layers*paper_thickness
 
-	def get_I(self):
+	def get_I_A(self):#Get the I for the A section! (It's still pi shaped)
 		height = self.height
 		flange_width = self.flange_width
 		web_dist = self.web_dist
-		flange_thickness = self.flange_thickness
+		top_flange_thickness = self.top_flange_thickness
 		web_thickness = self.web_thickness
 		length = self.length
 		dia_dist = self.dia_dist
 
 
 
-		flange_a = flange_width*flange_thickness
-		web_a = 2*web_thickness*(height-flange_thickness)
-		flange_Y = height - flange_thickness/2
-		web_Y = (height - flange_thickness)/2
+		flange_a = flange_width*top_flange_thickness
+		web_a = 2*web_thickness*(height-top_flange_thickness)
+		flange_Y = height - top_flange_thickness/2
+		web_Y = (height - top_flange_thickness)/2
 		flange_aY = flange_a*flange_Y
 		web_aY = web_a * web_Y
 
@@ -86,13 +87,58 @@ class Bridge:
 		flange_ay2 = flange_a*(y_flange**2)
 		web_ay2 = web_a*(y_web**2)
 
-		web_I = ((2*web_thickness)*((height-flange_thickness)**3))/12
-		flange_I = (flange_width*(flange_thickness**3))/12
+		web_I = ((2*web_thickness)*((height-top_flange_thickness)**3))/12
+		flange_I = (flange_width*(top_flange_thickness**3))/12
 
 		sum_ay2 = flange_ay2 + web_ay2
 		sum_I = web_I + flange_I
 
 		return sum_ay2+sum_I
+
+	def get_I_B(self):
+		height = self.height
+		flange_width = self.flange_width
+		web_dist = self.web_dist
+		top_flange_thickness = self.top_flange_thickness
+		bottom_flange_thickness = self.bottom_flange_thickness
+		web_thickness = self.web_thickness
+		length = self.length
+		dia_dist = self.dia_dist
+
+
+
+		top_flange_a = flange_width*top_flange_thickness
+		web_a = 2*web_thickness*(height-top_flange_thickness)
+		top_flange_Y = (height - top_flange_thickness/2)+bottom_flange_thickness
+		web_Y = ((height - top_flange_thickness)/2)+bottom_flange_thickness
+		top_flange_aY = top_flange_a*top_flange_Y
+		web_aY = web_a * web_Y
+
+		bottom_flange_a = flange_width*bottom_flange_thickness
+		bottom_flange_Y = bottom_flange_thickness/2
+		bottom_flange_aY = bottom_flange_a*bottom_flange_Y
+
+
+		AY = top_flange_aY + web_aY + bottom_flange_aY
+		yb = AY/(top_flange_a + web_a + bottom_flange_aY)
+
+		y_top_flange = top_flange_Y-yb;
+		y_web = web_Y-yb;
+		y_bottom_flange = bottom_flange_Y-yb;
+
+		top_flange_ay2 = top_flange_a*(y_top_flange**2)
+		web_ay2 = web_a*(y_web**2)
+		bottom_flange_ay2 = bottom_flange_a*(y_bottom_flange**2)
+
+		web_I = ((2*web_thickness)*((height-top_flange_thickness)**3))/12
+		top_flange_I = (flange_width*(top_flange_thickness**3))/12
+		bottom_flange_I = (flange_width*(bottom_flange_thickness**3))/12
+
+		sum_ay2 = top_flange_ay2 + web_ay2 + bottom_flange_ay2
+		sum_I = web_I + top_flange_I + bottom_flange_I
+
+		return sum_ay2+sum_I
+
 
 	def get_centroid(self):
 		height = self.height
@@ -250,7 +296,6 @@ class Bridge:
 
 def mutate(b):#b is a bridge, we're returning another mutated bridge
 	b2 = Bridge(1.27, 110, 950, 180, 3, 1, 75, 400)
-	#paper_width, height, length, flange_width, num_flange_layers, num_web_layers, web_dist, dia_dist
 	b2.height = b.height+(random.random()-0.5)*alpha
 	b2.flange_width = b.flange_width+(random.random()-0.5)*alpha
 	b2.web_dist = b.web_dist+(random.random()-0.5)*alpha
@@ -292,41 +337,7 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 
 
 
-
-# b1 = Bridge(180, 110, 75, 3*1.27, 1.27, 950, 400)
-b1 = Bridge(1.27, 180, mandatory_length, 110, 1, 1, 75, 450)
-b2 = mutate(b1)
-
-print(b1.is_valid())
-
-num_generations = 10000
-
-cnt = 0
-
-for cnt in tqdm(range(num_generations)):
-	mb1 = b1.get_max_load()
-	mb2 = b2.get_max_load()
-
-	if(mb1 < mb2):
-		b1 = mutate(b2)
-	else:
-		b2 = mutate(b1)
-
-	# print("Max load:",max(mb1,mb2))
-	cnt = cnt+1
-
-b1.report()
-print("Is Valid:",b1.is_valid())
-
-
-
-
-
-# max_P_flexural = b1.get_max_P_flexural()
-# max_P_shear = b1.get_max_P_shear()
-# buckling_failure = b1.get_buckling_failure()
-
-
-# print("the maximum this bridge can carry (excluding thin plate buckling) is: ",min(max_P_shear, max_P_flexural, buckling_failure))
+b1 = Bridge(1.27, 180, mandatory_length, 110, 3, 3, 1, 75, 450)
+print("I:",b1.get_I_B())
 
 
