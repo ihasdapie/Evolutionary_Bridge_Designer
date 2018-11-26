@@ -13,11 +13,11 @@ Conditions:
 		- Overall length
 		- Distance bw diaphragms
 What we need to calculate:
-	- Centroid location 
+	- Centroid location (done)
 	- Moment of inertia (done)
-	- Midspan deflection under 200N
-	- Determine P value that will cause 16 MPa tensile stress @max and 6 MPa tensile stress @max
-	- Determine P value that will cause 4 MPa shear stress
+	- Midspan deflection under 400N
+	- Determine P value that will cause 16 MPa tensile stress @max and 6 MPa tensile stress @max (done, needs checking)
+	- Determine P value that will cause 4 MPa shear stress ()
 	- Check P for plate buckling (top flange, flex of web, shear of web)
 	- 
 '''
@@ -206,51 +206,120 @@ class Bridge:
 		dac = 0.5*phi_max*(length/2)*(2/3)*(length/2)
 		return dac
 
-	def get_max_P_flexural(self): #Calculates the maximum P the bridge can handle without flexural failure.
+	#TODO: Check against group's calculations...
+	def get_max_P_flexural_A(self): #Calculates the maximum P the bridge can handle without flexural failure.
 		height = self.height
 		flange_width = self.flange_width
 		web_dist = self.web_dist
-		flange_thickness = self.flange_thickness
+		flange_thickness = self.top_flange_thickness
 		web_thickness = self.web_thickness
 		length = self.length
 		dia_dist = self.dia_dist
 
-		I = self.get_I()
-		y = self.get_centroid()
+		I = self.get_I_A()
+		y = self.get_centroid_A()
 
 		#Calculating P for Tension failure
-		M = (max_tensile*I)/y
-		P = (4*M)/length
+		'''
+		M = (max_tensile*I)/Y
+		M = 0.08305P -> P = M/0.08305
+
+		'''
+
+
+		M = (max_tensile*I)/y #maximum moment that this section can endure...
+		P = M/83.05
 		P1 = P
-		# print("Maximum P for tensile is:",P1)
+		print("Maximum P for tensile is:",P1)
 
 		#Calculating P for Compressive failure
 		M = (max_compressive*I)/(height-y)
-		P = (4*M)/length
+		P = M/83.05
 		P2 = P
-		# print("Maximum P for compressive is:",P2)
+		print("Maximum P for compressive is:",P2)
 
 		return min(P1, P2)
 
-	def get_max_P_shear(self):
+	def get_max_P_flexural_B(self): #Calculates the maximum P the bridge can handle without flexural failure.
 		height = self.height
 		flange_width = self.flange_width
 		web_dist = self.web_dist
-		flange_thickness = self.flange_thickness
+		flange_thickness = self.top_flange_thickness
 		web_thickness = self.web_thickness
 		length = self.length
 		dia_dist = self.dia_dist
 
-		I = self.get_I()
-		y = self.get_centroid()
+		I = self.get_I_B()
+		y = self.get_centroid_B()
+
+		#Calculating P for Tension failure
+		'''
+		M = (max_tensile*I)/Y
+		M = 0.08305P -> P = M/0.08305
+
+		'''
+
+
+		M = (max_tensile*I)/y #maximum moment that this section can endure...
+		P = M/94.94
+		P1 = P
+		print("Maximum P for tensile is:",P1)
+
+		#Calculating P for Compressive failure
+		M = (max_compressive*I)/(height-y)
+		P = M/94.94
+		P2 = P
+		print("Maximum P for compressive is:",P2)
+
+		return min(P1, P2)
+
+	def get_max_P_shear_A(self):
+		height = self.height
+		flange_width = self.flange_width
+		web_dist = self.web_dist
+		flange_thickness = self.top_flange_thickness
+		web_thickness = self.web_thickness
+		length = self.length
+		dia_dist = self.dia_dist
+
+		I = self.get_I_A()
+		y = self.get_centroid_A()
 
 		Q = web_thickness*2*y*(y/2)
+
+		P = (6.622516556*max_shear*I*(2*web_thickness))/Q
+
+		return P;
+
+	def get_max_P_shear_B(self):
+		height = self.height
+		flange_width = self.flange_width
+		web_dist = self.web_dist
+		top_flange_thickness = self.top_flange_thickness
+		bottom_flange_thickness = self.bottom_flange_thickness
+		web_thickness = self.web_thickness
+		length = self.length
+		dia_dist = self.dia_dist
+
+		I = self.get_I_B()
+		y = self.get_centroid_B()
+
+		# Q = web_thickness*2*y*(y/2)
+		area_webs = (y-bottom_flange_thickness)*web_thickness*2
+		bottom_area = bottom_flange_thickness*flange_width
+
+		y_bottom = bottom_flange_thickness/2
+		y_web = ((y-bottom_flange_thickness)/2)+bottom_flange_thickness
+
+		centroid2 = ((y_bottom*bottom_area+y_web*area_webs)/(area_webs+bottom_area))
+
+		Q = (y-centroid2)*(area_webs+bottom_area) #TODO: double check this calculation
 
 		P = (2*max_shear*I*(2*web_thickness))/Q
 
 		return P;
 
-	def get_buckling_failure(self):
+	def get_buckling_failure_A(self):
 		height = self.height
 		flange_width = self.flange_width
 		web_dist = self.web_dist
@@ -288,7 +357,7 @@ class Bridge:
 		height = self.height
 		flange_width = self.flange_width
 		web_dist = self.web_dist
-		flange_thickness = self.flange_thickness
+		top_flange_thickness = self.top_flange_thickness
 		web_thickness = self.web_thickness
 		length = self.length
 		dia_dist = self.dia_dist
@@ -307,7 +376,7 @@ class Bridge:
 
 		return True
 
-	def get_max_load(self):
+	def get_max_load_A(self):
 		return min(self.get_max_P_shear(), self.get_max_P_flexural(), self.get_buckling_failure())
 
 	def report(self):
@@ -367,6 +436,6 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 
 
 b1 = Bridge(1.27, 180, mandatory_length, 110, 3, 3, 1, 75, 450)
-print("I:",b1.get_I_B())
+print("Max P for shearing the B section:",b1.get_max_P_shear_A())
 
 
