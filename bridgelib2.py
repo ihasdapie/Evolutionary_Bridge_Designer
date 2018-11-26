@@ -41,7 +41,7 @@ split_point = 798 #from right to left: go from cross section A to B
 total_matboard = 813*1016 #826008
 
 ###ML VARIABLES###
-alpha = 10
+alpha = 1
 
 
 # Bridge of type discussed in class
@@ -54,6 +54,7 @@ class Bridge:
 		self.length = length
 		self.dia_dist = dia_dist
 		self.num_flange_layers_top = num_flange_layers_top
+		self.num_flange_layers_bottom = num_flange_layers_bottom
 		self.num_web_layers = num_web_layers
 
 		self.top_flange_thickness = num_flange_layers_top*paper_thickness
@@ -68,7 +69,6 @@ class Bridge:
 		web_thickness = self.web_thickness
 		length = self.length
 		dia_dist = self.dia_dist
-
 
 
 		flange_a = flange_width*top_flange_thickness
@@ -223,7 +223,6 @@ class Bridge:
 		'''
 		M = (max_tensile*I)/Y
 		M = 0.08305P -> P = M/0.08305
-
 		'''
 
 
@@ -236,7 +235,7 @@ class Bridge:
 		P = M/83.05
 		P2 = P
 
-		return min(P1, P2)
+		return [P1, P2]
 
 	def get_max_P_flexural_B(self): #Calculates the maximum P the bridge can handle without flexural failure.
 		height = self.height
@@ -268,7 +267,7 @@ class Bridge:
 		P = M/94.94
 		P2 = P
 
-		return min(P1, P2)
+		return [P1, P2]
 
 	def get_max_P_shear_A(self):
 		height = self.height
@@ -347,7 +346,7 @@ class Bridge:
 		# print("Tau_crit = ",Tau_crit)
 		# print("22x10^3,",Q)
 
-		return min(P1, P2, P3)
+		return [P1, P2, P3]
 
 	def get_buckling_failure_B(self):
 		height = self.height
@@ -389,7 +388,7 @@ class Bridge:
 		P = V/0.5
 		P3 = P
 
-		return min(P1, P2, P3)
+		return [P1, P2, P3]
 
 	def is_valid(self):
 		# return True
@@ -401,10 +400,14 @@ class Bridge:
 		length = self.length
 		dia_dist = self.dia_dist
 
-		num_flange_layers = self.num_flange_layers
+		num_flange_layers_top = self.num_flange_layers_top
+		num_flange_layers_bottom = self.num_flange_layers_bottom
 		num_web_layers = self.num_web_layers
 
-		if total_matboard < (flange_width*length*num_flange_layers)+(num_web_layers*2*(height-flange_thickness)*length):
+		paper_used = (flange_width*length*num_flange_layers_top)+(num_web_layers*2*(height-top_flange_thickness)*length)
+		paper_used += num_flange_layers_bottom*flange_width*(mandatory_length-split_point)
+
+		if total_matboard < paper_used:
 			# print("not enough board!")
 			return False
 		if flange_width < web_dist:
@@ -416,27 +419,51 @@ class Bridge:
 		return True
 
 	def get_max_load_A(self):
-		return min(self.get_max_P_shear_A(), self.get_max_P_flexural_A(), self.get_buckling_failure_A())
+		return min(self.get_max_P_shear_A(), min(self.get_max_P_flexural_A()), min(self.get_buckling_failure_A()))
 	def get_max_load_B(self):
-		return min(self.get_max_P_shear_B(), self.get_max_P_flexural_B(), self.get_buckling_failure_B())
+		return min(self.get_max_P_shear_B(), min(self.get_max_P_flexural_B()), min(self.get_buckling_failure_B()))
 	def get_max_load(self):
 		return min(self.get_max_load_A(), self.get_max_load_B())
 
 	def report(self):
 		print("|====================================|")
-		print("Height:",self.height)
+		print("=== DIMENSIONS OF BRIDGE ===")
+		print("Height: ",self.height)
+		print("Length: ",self.length)
 		print("Flange Width: ",self.flange_width)
 		print("Web Distance: ",self.web_dist)
 		print("Diaphragm Distance: ",self.dia_dist)
 		print("Top Flange Thickness: ",self.top_flange_thickness)
+		print("Bottom Flange Thickness ",self.bottom_flange_thickness)
 		print("Web Thickness: ",self.web_thickness)
+		print("\n=== WEIGHT BEARING OF THE BRIDGE: SECTION A ===")
+		print("I value: ",b1.get_I_A())
+		print("Centroid: ",b1.get_centroid_A())
+		print("Maximum Shear: ",b1.get_max_P_shear_A())
+		print("Maximum Compression: ",b1.get_max_P_flexural_A()[1])
+		print("Maximum Tension: ",b1.get_max_P_flexural_A()[0])
+		print("Maximum for Compressive Flange Buckling: ",b1.get_buckling_failure_A()[0])
+		print("Maximum for Flexural Compression @Top of Web: ",b1.get_buckling_failure_A()[1])
+		print("Maximum for Shear Buckling @ Top of Web: ",b1.get_buckling_failure_A()[2])
+		print("\n=== WEIGHT BEARING OF THE BRIDGE: SECTION B ===")
+		print("I value: ",b1.get_I_B())
+		print("Centroid: ",b1.get_centroid_B())
+		print("Maximum Shear: ",b1.get_max_P_shear_B())
+		print("Maximum Compression: ",b1.get_max_P_flexural_B()[1])
+		print("Maximum Tension: ",b1.get_max_P_flexural_B()[0])
+		print("Maximum for Compressive Flange Buckling: ",b1.get_buckling_failure_B()[0])
+		print("Maximum for Flexural Compression @Top of Web: ",b1.get_buckling_failure_B()[1])
+		print("Maximum for Shear Buckling @ Top of Web: ",b1.get_buckling_failure_B()[2])
 		print("---------")
 		print("Total load bearing ability: ",self.get_max_load())
 		print("|====================================|")
 
 
 def mutate(b):#b is a bridge, we're returning another mutated bridge
-	b2 = Bridge(1.27, 110, 950, 180, 3, 1, 75, 400)
+
+	#paper_thickness, height, length, flange_width, num_flange_layers_top, num_flange_layers_bottom, num_web_layers, web_dist, dia_dist):
+
+	b2 = Bridge(1.27, 102.54, mandatory_length, 105, 2, 2, 1, 55, 91.43)
 	b2.height = b.height+(random.random()-0.5)*alpha
 	b2.flange_width = b.flange_width+(random.random()-0.5)*alpha
 	b2.web_dist = b.web_dist+(random.random()-0.5)*alpha
@@ -452,9 +479,15 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 
 		if(r1<(1/3)):
 			if(random.random()>0.5):
-				b2.num_flange_layers += 1
+				b2.num_flange_layers_top += 1
 			else:
-				b2.num_flange_layers -= 1
+				b2.num_flange_layers_top -= 1
+
+		if(random.random()<(1/3)):
+			if(random.random()>0.5):
+				b2.num_flange_layers_bottom += 1
+			else:
+				b2.num_flange_layers_bottom -= 1
 
 		r1 = random.random()
 		
@@ -464,12 +497,15 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 			else:
 				b2.num_web_layers -= 1
 
-		if b2.num_flange_layers	== 0:
-			b2.num_flange_layers = 1
+		if b2.num_flange_layers_top	== 0:
+			b2.num_flange_layers_top = 1
 		if b2.num_web_layers == 0:
 			b2.num_web_layers = 1
+		if b2.num_flange_layers_bottom == 0:
+			b2.num_flange_layers_bottom = 1
 
-		b2.flange_thickness = b2.num_flange_layers*b2.paper_thickness
+		b2.flange_thickness_top = b2.num_flange_layers_top*b2.paper_thickness
+		b2.flange_thickness_bottom = b2.num_flange_layers_bottom*b2.paper_thickness
 		b2.web_thickness = b2.num_web_layers*b2.paper_thickness
 
 		good_to_go = b2.is_valid()
@@ -477,12 +513,33 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 	return b2
 
 
-#1 layer on webs, top flange = 2 each
-# b1 = Bridge(1.27, 180, mandatory_length, 110, 2, 2, 1, 75, 450)
+#paper_thickness, height, length, flange_width, num_flange_layers_top, num_flange_layers_bottom, num_web_layers, web_dist, dia_dist):
 b1 = Bridge(1.27, 102.54, mandatory_length, 105, 2, 2, 1, 55, 91.43)
+# b1 = Bridge(1.27, 180, mandatory_length, 110, 3, 2, 1, 75, 91.43)
 
-# print("Max P for buckling section B:",b1.get_buckling_failure_B())
-# print("Max P for buckling section A:",b1.get_buckling_failure_A())
-print("Max P in general: ",b1.get_max_load())
+b2 = mutate(b1)
+
+print("WE VALID?",b1.is_valid())
+
+num_generations = 1000
+
+cnt = 0
+
+for cnt in tqdm(range(num_generations)):
+# for cnt in range(num_generations):
+	mb1 = b1.get_max_load()
+	mb2 = b2.get_max_load()
+
+	if(mb1 < mb2):
+		b1 = mutate(b2)
+	else:
+		b2 = mutate(b1)
+
+	# print("Max load:",max(mb1,mb2))
+	cnt = cnt+1
+
+b1.report()
+
+b1.report()
 
 
