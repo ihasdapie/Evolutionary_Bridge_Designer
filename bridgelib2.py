@@ -39,9 +39,11 @@ mandatory_length = 1280
 split_point = 798 #from right to left: go from cross section A to B 
 
 total_matboard = 813*1016 #826008
+total_matboard = 800*1000
+# total_matboard = 1000*1000
 
 ###ML VARIABLES###
-alpha = 1
+alpha = 10
 
 
 # Bridge of type discussed in class
@@ -390,8 +392,7 @@ class Bridge:
 
 		return [P1, P2, P3]
 
-	def is_valid(self):
-		# return True
+	def get_amount_paper(self):
 		height = self.height
 		flange_width = self.flange_width
 		web_dist = self.web_dist
@@ -406,6 +407,25 @@ class Bridge:
 
 		paper_used = (flange_width*length*num_flange_layers_top)+(num_web_layers*2*(height-top_flange_thickness)*length)
 		paper_used += num_flange_layers_bottom*flange_width*(mandatory_length-split_point)
+
+		return paper_used
+
+
+	def is_valid(self):
+		# return True
+		height = self.height
+		flange_width = self.flange_width
+		web_dist = self.web_dist
+		top_flange_thickness = self.top_flange_thickness
+		web_thickness = self.web_thickness
+		length = self.length
+		dia_dist = self.dia_dist
+
+		num_flange_layers_top = self.num_flange_layers_top
+		num_flange_layers_bottom = self.num_flange_layers_bottom
+		num_web_layers = self.num_web_layers
+
+		paper_used = self.get_amount_paper()
 
 		if total_matboard < paper_used:
 			# print("not enough board!")
@@ -456,6 +476,7 @@ class Bridge:
 		print("Maximum for Shear Buckling @ Top of Web: ",b1.get_buckling_failure_B()[2])
 		print("---------")
 		print("Total load bearing ability: ",self.get_max_load())
+		print("Amount of paper used: ",self.get_amount_paper())
 		print("|====================================|")
 
 
@@ -507,21 +528,27 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 		b2.flange_thickness_top = b2.num_flange_layers_top*b2.paper_thickness
 		b2.flange_thickness_bottom = b2.num_flange_layers_bottom*b2.paper_thickness
 		b2.web_thickness = b2.num_web_layers*b2.paper_thickness
-
-		good_to_go = b2.is_valid()
+		# if b2.is_valid():
+			# print("HAPPY")
+		# good_to_go = b2.is_valid()
+		good_to_go = True
 
 	return b2
 
 
 #paper_thickness, height, length, flange_width, num_flange_layers_top, num_flange_layers_bottom, num_web_layers, web_dist, dia_dist):
-b1 = Bridge(1.27, 102.54, mandatory_length, 105, 2, 2, 1, 55, 91.43)
-# b1 = Bridge(1.27, 180, mandatory_length, 110, 3, 2, 1, 75, 91.43)
+# b1 = Bridge(1.27, 102.54, mandatory_length, 105, 2, 2, 1, 55, 91.43)
+b1 = Bridge(1.27, 10.54, mandatory_length, 105, 2, 2, 1, 55, 1000)
+
 
 b2 = mutate(b1)
 
-print("WE VALID?",b1.is_valid())
+print("Validity of Starting Design: ",b1.is_valid())
+print("Load bearing ability of Starting Design",b1.get_max_load())
 
-num_generations = 1000
+print("\033[1mNow evolving...\033[0m")
+
+num_generations = 1000000
 
 cnt = 0
 
@@ -530,16 +557,14 @@ for cnt in tqdm(range(num_generations)):
 	mb1 = b1.get_max_load()
 	mb2 = b2.get_max_load()
 
-	if(mb1 < mb2):
-		b1 = mutate(b2)
+	if(b2.is_valid() and mb1 < mb2):
+		b1 = b2
+		b2 = mutate(b2)
+
 	else:
 		b2 = mutate(b1)
 
-	# print("Max load:",max(mb1,mb2))
-	cnt = cnt+1
-
 b1.report()
-
-b1.report()
+print("Validity of proposed design: ",b1.is_valid())
 
 
