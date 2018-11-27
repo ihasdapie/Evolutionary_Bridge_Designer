@@ -451,8 +451,8 @@ class Bridge:
 			return False
 		if flange_width < 100:
 			return False
-		if web_dist < 50:
-			return False
+		# if web_dist < 50:
+			# return False
 
 		return True
 
@@ -475,28 +475,29 @@ class Bridge:
 		print("Bottom Flange Thickness ",self.bottom_flange_thickness)
 		print("Web Thickness: ",self.web_thickness)
 		print("\n=== WEIGHT BEARING OF THE BRIDGE: SECTION A ===")
-		print("I value: ",b1.get_I_A())
-		print("Centroid: ",b1.get_centroid_A())
-		print("Maximum Shear: ",b1.get_max_P_shear_A())
-		print("Maximum Compression: ",b1.get_max_P_flexural_A()[1])
-		print("Maximum Tension: ",b1.get_max_P_flexural_A()[0])
-		print("Maximum for Compressive Flange Buckling: ",b1.get_buckling_failure_A()[0])
-		print("Maximum for Flexural Compression @Top of Web: ",b1.get_buckling_failure_A()[1])
-		print("Maximum for Shear Buckling @ Top of Web: ",b1.get_buckling_failure_A()[2])
-		print("Maximum for Shear Buckling @ Side of Top Flange: ",b1.get_buckling_failure_A()[3])
+		print("I value: ",self.get_I_A())
+		print("Centroid: ",self.get_centroid_A())
+		print("Maximum Shear: ",self.get_max_P_shear_A())
+		print("Maximum Compression: ",self.get_max_P_flexural_A()[1])
+		print("Maximum Tension: ",self.get_max_P_flexural_A()[0])
+		print("Maximum for Compressive Flange Buckling: ",self.get_buckling_failure_A()[0])
+		print("Maximum for Flexural Compression @Top of Web: ",self.get_buckling_failure_A()[1])
+		print("Maximum for Shear Buckling @ Top of Web: ",self.get_buckling_failure_A()[2])
+		print("Maximum for Shear Buckling @ Side of Top Flange: ",self.get_buckling_failure_A()[3])
 		print("\n=== WEIGHT BEARING OF THE BRIDGE: SECTION B ===")
-		print("I value: ",b1.get_I_B())
-		print("Centroid: ",b1.get_centroid_B())
-		print("Maximum Shear: ",b1.get_max_P_shear_B())
-		print("Maximum Compression: ",b1.get_max_P_flexural_B()[1])
-		print("Maximum Tension: ",b1.get_max_P_flexural_B()[0])
-		print("Maximum for Compressive Flange Buckling: ",b1.get_buckling_failure_B()[0])
-		print("Maximum for Flexural Compression @Top of Web: ",b1.get_buckling_failure_B()[1])
-		print("Maximum for Shear Buckling @ Top of Web: ",b1.get_buckling_failure_B()[2])
-		print("Maximum for Shear Buckling @ Side of Top Flange: ",b1.get_buckling_failure_B()[3])
+		print("I value: ",self.get_I_B())
+		print("Centroid: ",self.get_centroid_B())
+		print("Maximum Shear: ",self.get_max_P_shear_B())
+		print("Maximum Compression: ",self.get_max_P_flexural_B()[1])
+		print("Maximum Tension: ",self.get_max_P_flexural_B()[0])
+		print("Maximum for Compressive Flange Buckling: ",self.get_buckling_failure_B()[0])
+		print("Maximum for Flexural Compression @Top of Web: ",self.get_buckling_failure_B()[1])
+		print("Maximum for Shear Buckling @ Top of Web: ",self.get_buckling_failure_B()[2])
+		print("Maximum for Shear Buckling @ Side of Top Flange: ",self.get_buckling_failure_B()[3])
 		print("---------")
 		print("\033[1mTotal load bearing ability: ",self.get_max_load(),"\033[0m")
 		print("Amount of paper used: ",self.get_amount_paper(),"/",total_matboard)
+		print("Validity of evolved design: ",self.is_valid())
 		print("|====================================|")
 
 
@@ -548,40 +549,27 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 		b2.flange_thickness_top = b2.num_flange_layers_top*b2.paper_thickness
 		b2.flange_thickness_bottom = b2.num_flange_layers_bottom*b2.paper_thickness
 		b2.web_thickness = b2.num_web_layers*b2.paper_thickness
-		# if b2.is_valid():
-			# print("HAPPY")
-		# good_to_go = b2.is_valid()
 		good_to_go = True
 
 	return b2
 
+def evolve(b, num_generations):
+	b1 = b
 
-#paper_thickness, height, length, flange_width, num_flange_layers_top, num_flange_layers_bottom, num_web_layers, web_dist, dia_dist):
-# b1 = Bridge(1.27, 102.54, mandatory_length, 105, 2, 2, 1, 55, 91.43)
-b1 = Bridge(1.27, 102.54, mandatory_length, 105, 2, 2, 1, 55, 91.45)
+	b2 = mutate(b1)
 
+	cnt = 0
 
-b2 = mutate(b1)
+	for cnt in tqdm(range(num_generations)):
+	# for cnt in range(num_generations):
+		mb1 = b1.get_max_load()
+		mb2 = b2.get_max_load()
 
-print("Validity of Starting Design: ",b1.is_valid())
-print("Load bearing ability of Starting Design",b1.get_max_load())
-print("\033[1mNow evolving...\033[0m")
+		if(b2.is_valid() and mb1 < mb2):
+			b1 = b2
+			b2 = mutate(b2)
 
-num_generations = 10000
+		else:
+			b2 = mutate(b1)
 
-cnt = 0
-
-for cnt in tqdm(range(num_generations)):
-# for cnt in range(num_generations):
-	mb1 = b1.get_max_load()
-	mb2 = b2.get_max_load()
-
-	if(b2.is_valid() and mb1 < mb2):
-		b1 = b2
-		b2 = mutate(b2)
-
-	else:
-		b2 = mutate(b1)
-
-b1.report()
-print("Validity of proposed design: ",b1.is_valid())
+	return b1
