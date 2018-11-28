@@ -40,8 +40,6 @@ mandatory_length = 1280
 split_point = 798 #from right to left: go from cross section A to B 
 
 total_matboard = 813*1016 #826008
-# total_matboard = 600*1000
-# total_matboard = 1000*1000
 
 ###ML VARIABLES###
 alpha = 10

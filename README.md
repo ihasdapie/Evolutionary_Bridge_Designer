@@ -20,7 +20,7 @@ These programs use the `math`, `random`, `tqdm`, and `copy` python modules. `tqd
 
 ## Descriptions of Scripts:
 * `bridgelib.py` contains a preliminary set of functions to calculate simple central point-load bearing abilities of a uniform cross section pi-beam.
-* `bridgelib2.py` contains a more advanced set of functions to calculate the load-bearing abilities of a bridge with two cross sections that has two point loads located at 550mm and 1250mm from the left side.
+* `bridgelib2.py` contains a more advanced set of functions to calculate the load-bearing abilities of a bridge with two cross sections that has two point loads located at 550mm and 1250mm from the left side. Section A of the beam is a pi-beam and section B is a boxed beam. The beam cross section changes at 798mm from the left side.
 * `bridge_evolver.py` implements evolution to optimize the bridge parameters.
 * `bridge_calculator.py` is a testing space of sorts where one can manually enter bridge parameters and determine the load bearing ability.
 
