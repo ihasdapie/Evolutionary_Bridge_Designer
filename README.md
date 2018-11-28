@@ -43,4 +43,15 @@ These programs use the `math`, `random`, `tqdm`, and `copy` python modules. `tqd
 
 * `mutate(b)` returns a mutated version of Bridge b (as described above)
 * `evolve(b, num_generations)` implements the evolutionary process described above starting with the bridge `b` and taking `num_generations` generations. It returns an optimized bridge.
-* 
+
+## Cool Things to Consider:
+#### Multiple Optimae:
+If you imagined making the many dimensional plot of all bridge parameters against the `Bridge.get_max_load()` function for the bridge defined by the bridge paramters at a given point, what would that function look like? This program is trying to use evolution to find peaks in that function. But how many peaks are there? Are there multiple equally good bridge designs? Or is there one that is dramatically better? 
+
+#### Plotting `Bridge.get_max_load()` Over the Course of Evolution
+When you evolve bridges, is it relatively smooth sailing overall? Or are there massive leaps and innovations in bridge design, or are there massive stagnations in the middle of the program?
+
+#### How Should one Define the Fitness Function in the Real World?
+I was talking with Professor Collins about this project, and he said there was significant interest in this type of design process when the computing power was first becoming available for this type of computation. However, he said that one of the big issues was about how to define the Fitness (or, as some people like to refer to it, the **cost** function) should be defined.
+
+Should we be maximizing for total load bearing ability? Or cost of the materials? Or how easy it is to build? How quickly it can be built? How should we balance all of these goals? How can that be encoded programmatically? 
