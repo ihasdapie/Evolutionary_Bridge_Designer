@@ -25,6 +25,7 @@ What we need to calculate:
 import math as math
 import random as random
 from tqdm import tqdm
+import copy
 ###CIV VARIABLES###
 E = 4000
 max_tensile = 30
@@ -39,14 +40,14 @@ mandatory_length = 1280
 split_point = 798 #from right to left: go from cross section A to B 
 
 total_matboard = 813*1016 #826008
-total_matboard = 600*1000
+# total_matboard = 600*1000
 # total_matboard = 1000*1000
 
 ###ML VARIABLES###
 alpha = 10
 
 
-# Bridge of type discussed in class
+# Bridge of type created by group consisting of Aman, Richard, Sahil, and Mobin
 class Bridge:
 	def __init__(self, paper_thickness, height, length, flange_width, num_flange_layers_top, num_flange_layers_bottom, num_web_layers, web_dist, dia_dist):
 		self.paper_thickness = paper_thickness
@@ -421,8 +422,9 @@ class Bridge:
 
 		paper_used = (flange_width*length*num_flange_layers_top)+(num_web_layers*2*(height-top_flange_thickness)*length)
 		paper_used += num_flange_layers_bottom*flange_width*(mandatory_length-split_point)
-		num_diaphragms = length/dia_dist
+		num_diaphragms = (length/dia_dist)+5
 		area_dia = num_diaphragms*(height-top_flange_thickness)*web_dist;
+		paper_used += area_dia
 
 		return paper_used
 
@@ -464,7 +466,7 @@ class Bridge:
 		return min(self.get_max_load_A(), self.get_max_load_B())
 
 	def report(self):
-		print("|====================================|")
+		print("|===========================================================|")
 		print("=== DIMENSIONS OF BRIDGE ===")
 		print("Height: ",self.height)
 		print("Length: ",self.length)
@@ -498,7 +500,7 @@ class Bridge:
 		print("\033[1mTotal load bearing ability: ",self.get_max_load(),"\033[0m")
 		print("Amount of paper used: ",self.get_amount_paper(),"/",total_matboard)
 		print("Validity of evolved design: ",self.is_valid())
-		print("|====================================|")
+		print("|===========================================================|")
 
 
 def mutate(b):#b is a bridge, we're returning another mutated bridge
@@ -566,10 +568,14 @@ def evolve(b, num_generations):
 		mb2 = b2.get_max_load()
 
 		if(b2.is_valid() and mb1 < mb2):
-			b1 = b2
+			b1 = copy.deepcopy(b2)
+			# b1 = b2
 			b2 = mutate(b2)
 
 		else:
 			b2 = mutate(b1)
+
+		if not b1.is_valid():
+			print("YOUR INITIAL DESIGN WAS NOT VALID!")
 
 	return b1
