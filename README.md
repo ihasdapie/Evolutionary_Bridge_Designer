@@ -55,3 +55,6 @@ When you evolve bridges, is it relatively smooth sailing overall? Or are there m
 I was talking with Professor Collins about this project, and he said there was significant interest in this type of design process when the computing power was first becoming available for this type of computation. However, he said that one of the big issues was about how to define the Fitness (or, as some people like to refer to it, the **cost** function) should be defined.
 
 Should we be maximizing for total load bearing ability? Or cost of the materials? Or how easy it is to build? How quickly it can be built? How should we balance all of these goals? How can that be encoded programmatically? 
+
+#### How Could This Program Mirror Evolution more Accurately?
+What would happen if we had a long list of bridges evolving simultaneously? Would different "species" of bridges form? Would it lead to greater overall fitness if the bridges reproduced sexually in some way? 
