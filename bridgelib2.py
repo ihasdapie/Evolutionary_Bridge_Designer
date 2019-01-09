@@ -1,4 +1,4 @@
-'''
+'''c
 Conditions:
 	- Bridge will be the same as in the handout (double t-beam, diaphragms throughout)
 	- Given variables:
@@ -15,11 +15,10 @@ Conditions:
 What we need to calculate:
 	- Centroid location (done)
 	- Moment of inertia (done)
-	- Midspan deflection under 400N
 	- Determine P value that will cause 16 MPa tensile stress @max and 6 MPa tensile stress @max (done, needs checking)
 	- Determine P value that will cause 4 MPa shear stress (Done)
-	- Check P for plate buckling (top flange, flex of web, shear of web)
-	- Check P for plate buckling (Edge of top flange!)
+	- Check P for plate buckling (top flange, flex of web, shear of web) (done)
+	- Check P for plate buckling (Edge of top flange!) (Done)
 '''
 
 import math as math
@@ -35,14 +34,14 @@ mu = 0.2 #poisson's ratio
 max_shear_cement = 2
 pi = math.pi
 
+
+###CONSTRAINTS###
 mandatory_length = 1280
-
 split_point = 798 #from right to left: go from cross section A to B 
-
 total_matboard = 813*1016 #826008
 
 ###ML VARIABLES###
-alpha = 10
+aliph = 10
 
 
 # Bridge of type created by group consisting of Aman, Richard, Sahil, and Mobin
@@ -501,7 +500,7 @@ class Bridge:
 		print("|===========================================================|")
 
 
-def mutate(b):#b is a bridge, we're returning another mutated bridge
+def mutate(b, alpha):#b is a bridge, we're returning another mutated bridge
 
 	#paper_thickness, height, length, flange_width, num_flange_layers_top, num_flange_layers_bottom, num_web_layers, web_dist, dia_dist):
 
@@ -553,12 +552,58 @@ def mutate(b):#b is a bridge, we're returning another mutated bridge
 
 	return b2
 
-def evolve(b, num_generations):
+def ascend(b, num_steps):
+	# Goal: Get all the failure mechanisms to be as similar as possible.
 	b1 = b
 
-	b2 = mutate(b1)
+	cnt = 0
+
+	maxloads = [];
+
+	for cnt in tqdm(range(num_steps)):
+
+
+		if not b1.is_valid():
+			print("YOUR INITIAL DESIGN WAS NOT VALID!")
+
+		maxloads.append(mb1);
+
+	return [b1, maxloads];
+
+def bridge_write(b, succ_num, g_num):
+	file = open("evolve_outputs/"+str(succ_num)+".txt", 'w')
+	
+
+	str_out = ""
+	str_out += str(b.paper_thickness) + "\n"
+	str_out += str(b.height) + "\n"
+	str_out += str(b.flange_width) + "\n"
+	str_out += str(b.web_dist) + "\n"
+	str_out += str(b.length) + "\n"
+	str_out += str(b.dia_dist) + "\n"
+	str_out += str(b.num_flange_layers_top) + "\n"
+	str_out += str(b.num_flange_layers_bottom) + "\n"
+	str_out += str(b.num_web_layers) + "\n"
+	str_out += str(b.top_flange_thickness) + "\n"
+	str_out += str(b.bottom_flange_thickness) + "\n"
+	str_out += str(b.web_thickness) + "\n"
+	str_out += str(g_num) + "\n"
+	str_out += str(b.get_max_load())
+
+	file.write(str_out)
+
+
+def evolve(b, num_generations, alpha):
+	b1 = b
+
+	b2 = mutate(b1, alpha)
 
 	cnt = 0
+
+	maxloads = [];
+
+	success_num = 0 #version number of this bridge (not including failed generations)
+	generation_num = 0
 
 	for cnt in tqdm(range(num_generations)):
 	# for cnt in range(num_generations):
@@ -568,12 +613,19 @@ def evolve(b, num_generations):
 		if(b2.is_valid() and mb1 < mb2):
 			b1 = copy.deepcopy(b2)
 			# b1 = b2
-			b2 = mutate(b2)
+			b2 = mutate(b2, alpha)
+			bridge_write(b1, success_num, generation_num)
+			success_num += 1
+
 
 		else:
-			b2 = mutate(b1)
+			b2 = mutate(b1, alpha)
 
 		if not b1.is_valid():
 			print("YOUR INITIAL DESIGN WAS NOT VALID!")
 
-	return b1
+		maxloads.append(mb1);
+
+		generation_num += 1
+
+	return [b1, maxloads];
