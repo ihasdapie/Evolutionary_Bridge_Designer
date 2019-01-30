@@ -320,5 +320,3 @@ b1.report()
 
 
 # print("the maximum this bridge can carry (excluding thin plate buckling) is: ",min(max_P_shear, max_P_flexural, buckling_failure))
-
-

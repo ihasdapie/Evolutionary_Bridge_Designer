@@ -571,7 +571,7 @@ def ascend(b, num_steps):
 	return [b1, maxloads];
 
 def bridge_write(b, succ_num, g_num):
-	file = open("evolve_outputs/"+str(succ_num)+".txt", 'w')
+	file = open("evolve_outputs_1/"+str(succ_num)+".txt", 'w')
 	
 
 	str_out = ""

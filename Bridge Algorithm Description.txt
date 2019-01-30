@@ -1,0 +1,5 @@
+Bridge Description - One Paragraph (For Sheridan)
+
+This set of programs uses a genetic algorithm to optimize the design of a CIV102 bridge for performance under Baldwin loading. At the beginning of the process, a candidate bridge design is generated, and one other bridge is mutated off from that original bridge. The predicted maximum load bearing ability for these bridges are compared, and the superior bridge "survives" to the next generation. In subsequent generations, a new bridge is mutated from the best bridge(s) from the previous generation.
+
+On the advice of Professor Foster, I created another set of programs to visualize the process of evolution. I had the evolution program output numerical descriptions of the best bridges of each generation, then wrote a program to show scale drawings of the bridges in rapid succession in order to "see" the evolution.

@@ -31,4 +31,3 @@ plt.grid(True)
 plt.show();
 
 b_final.report()
-
