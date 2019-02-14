@@ -1,6 +1,11 @@
 # Evolutionary_Bridge_Designer
 A set of programs that use evolution to design high-load bearing bridges. The bridges are designed to survive under the load pattern of the Baldwin press at the University of Toronto.
 
+See my brief YouTube video on this project [here!](https://www.youtube.com/watch?v=nS4-R22Pi4c)
+
+![](images/Better_screenshot.png)
+Above is a visualization of 100 lineages of bridges evolving over time. Each line is a lineage of bridges, the x-axis is the generation number, and the y axis is the strength of the bridges in that generation. Notice the two species that emerge!
+
 ## The Basic Idea:
 Here are the core elements of the original assignment:
 * We have a finite amount of matboard
