@@ -1,4 +1,3 @@
-"""
 #######################
 # CIV102 Final Matboard Bridge Project
 # 
@@ -7,25 +6,6 @@
 # Copyright © 2020 | CIV102 Group 83 | Brian Chen, Jacky Liao, Leon Qian, Simon Wang
 # 
 #######################
-
-
-A simply supported bridge subjected to symmetric loading
-
-
-                  <-----------span---------------->
-
-                   load_d P/2            P/2 load_d 
-                  <------> ↓            ↓ <------> 
---------------    ---------------|-----------------
-|  flange    |    |___|_____|____|____|____|____|__|
---------------                   |    <---->               
- | |      | |     ^              |  diaphragm_dist ^
- | |      | |    /  \            |                /  \ 
- | |      | |                    |
- | |      | | <--- webs        CL (centerline)
- ---      ---
-
-"""
 
 import copy
 import math as math
@@ -41,16 +21,22 @@ max_compressive = 6 #mpa
 max_shear = 4 #mpa
 mu = 0.2 #poisson's ratio
 max_shear_cement = 2 #mpa
-pi = math.pi
-mandatory_length = 980  #mm
+mandatory_length = 980 #mm
 total_matboard = 814*1016 #827024 mm^2
 load_d = 280 # mm
+support_height = 600 #mm
+
+
 ############################################
 inter_load_d = mandatory_length - (2*load_d)
 
 class Bridge:
     """
-    A simply supported bridge subjected to symmetric loading
+    A bridge supported at either end and by a central matboard column
+    subjected to symmetric loading.
+
+    Assuming matboard column will have a square cross-section with no diaphragms
+
 
 
                       <-----------span---------------->
@@ -59,15 +45,18 @@ class Bridge:
                       <------> ↓            ↓ <------> 
     --------------    ---------------|-----------------
     |  flange    |    |___|_____|____|____|____|____|__|
-    --------------                   |    <---->               
-     | |      | |     ^              |  diaphragm_dist ^
-     | |      | |    /  \            |                /  \ 
-     | |      | |                    |
+    --------------      matboard   |  |    <---->               
+     | |      | |     ^  support-> |  |  diaphragm_dist ^
+     | |      | |    /  \          |  |                /  \ 
+     | |      | |                  |  |
      | |      | | <--- webs        CL (centerline)
      ---      ---
-
+    
     """
-    def __init__(self, paper_thickness, height, length, flange_width, num_flange_layers, num_web_layers, web_dist, diaphragm_dist):
+
+    def __init__(self, paper_thickness, height, length, flange_width, \
+                 num_flange_layers, num_web_layers, web_dist, \
+                 diaphragm_dist, num_column_layers, column_sidelength):
         self.paper_thickness = paper_thickness
         self.height = height
         self.flange_width = flange_width
@@ -78,6 +67,9 @@ class Bridge:
         self.num_web_layers = num_web_layers
         self.flange_thickness = num_flange_layers*paper_thickness
         self.web_thickness = num_web_layers*paper_thickness
+        self.num_column_layers = num_column_layers
+        self.column_thickness = num_column_layers * self.paper_thickness
+        self.column_sidelength = column_sidelength # outside dimension
         self.y_bar = self.get_centroid() # centroidal axis, ȳ
         self.I = self.get_I()
 
@@ -87,7 +79,38 @@ class Bridge:
             data = json.load(f)
         return cls(data['paper_thickness'], data['height'], data['length'],
                    data['flange_width'], data['num_flange_layers'], data['num_web_layers'],
-                   data['web_dist'], data['diaphragm_dist'])
+                   data['web_dist'], data['diaphragm_dist'], data['num_column_layers'], data['column_sidelength'])
+
+    def get_column_I(self):
+        # calculate for "outer" box:
+        column_I = (self.column_sidelength**4)/12
+        # calculate for "inner box"
+        inner_sidelength = self.column_sidelength - 2*(self.column_thickness)
+        column_I -= (inner_sidelength**4)/12
+        return column_I
+
+    def column_crush(self, show_calc):
+        # calculates force needed such that column suffers compressive failure
+        # σ = F/A, F = σ*A
+        global max_compressive
+        area = (self.column_sidelength**2) - (self.column_sidelength-(2*self.column_thickness))**2
+        return max_compressive * area
+
+
+    def get_column_euler_buckling(self, show_calc=False):
+        # euler bukcling; σ_fail = π^2EI/AL^2 P_fail = π^2EI/L^2
+        global support_height, E
+        column_I = self.get_column_I()
+        bucklingP = ((math.pi**2)*4000*column_I)/(support_height**2)
+        return bucklingP
+
+    def get_column_plate_buckling(self):
+        # column sides may be modelled as a thin plate supported on two edges  
+        # σ_fail = ((4π^2E)/(12(1-u^2)))*(t/b)^2
+        stress = ((4*(math.pi**2)*(4000))/(12*(1-(0.2**2))))*((t/b)**2)
+        area = (self.column_sidelength**2) - (self.column_sidelength-(2*self.column_thickness))**2
+        P = stress*area # is this how we do it? seems ok
+        return P 
 
     def get_centroid(self, show_calc=False):
         "returns centroidal axis , y_bar relative to bottom of pi-beam"
@@ -151,6 +174,14 @@ class Bridge:
             print("I_total = ", sum_ay2 + sum_I)
         return sum_ay2+sum_I
     
+    def get_column_min_P(self, bridge_P, midpoint_deflection):
+        # find P that the column must exert such that it can cause a deflection
+        # of the same magnitude and in the oppisite direction of midpoint_deflection
+        midpoint_deflection = self.get_midspan_deflection(bridge_P)
+        pass
+
+
+    
 
     def get_midspan_deflection(self, P, show_calc=False): #P is the point loads applied at load_d from edge
         # using moment area thereom #2
@@ -161,7 +192,7 @@ class Bridge:
         #   ---------M----------- (Φ_max)
 
         global load_d, inter_load_d
-        M = (P/2) * load_d # units N*mm
+        M = (P/2) * self.load_d # units N*mm
         # get curvature per unit length, rad/mm Φ=M/EI
         phi_max = M/(E*self.I)
 
@@ -183,9 +214,10 @@ class Bridge:
         # M = load_d * (P/2)
         # P = (2Iσ)/(y_bar*load_d)
         global max_tensile, max_compressive, load_d 
+        
 
         P_tension_max = (2*self.I*max_tensile)/(self.y_bar*load_d)
-        P_compressive_max = (2*self.I*max_compressive)/((self.height-self.y_bar)*load_d)
+        P_compressive_max = (2*self.I*max_compressive)/(self.y_bar*load_d)
 
         if show_calc:
             print("Maximum P for tensile is:", P_tension_max)
@@ -201,11 +233,9 @@ class Bridge:
         global max_shear
         # using Q as calculated from the "legs"
         # Q = sum(A*d)
-        Q = (self.y_bar)*(self.web_thickness*self.y_bar)
+        Q = (self.y_bar/2)*(self.web_thickness*self.y_bar)
         b = self.web_thickness*2
         V_max = (2*(self.I*b*max_shear))/Q
-
-        
 
         if show_calc:
             print(Q, b) # might be nice to prettyprint this ...
@@ -213,96 +243,57 @@ class Bridge:
         return V_max
 
     def get_buckling_failure(self, show_calc=False):
-        global E, mu, load_d, pi
+        global E, mu, load_d, 
 
         Q = (self.y_bar/2)*(self.web_thickness*self.y_bar)
         #pt. 1: Compressive flange failure
         # looking at the flange between the webs
         # σ_crit  = ((4π^2E)/(12(1-u^2))) (t/b)^2
-        sig_comp_flange_crit = ((4*(pi**2)*E)/(12*(1-mu**2)))*((self.flange_thickness/self.web_dist)**2)
+        sig_comp_flange_crit = ((4*(math.pi**2)*E)/(12*(1-mu**2)))*((self.flange_thickness/self.web_dist)**2)
         
         #TODO: I'm not 100% on what y should be. I think height bc that's the very top? 
         #  σ = My/I = sig_comp_flange_crit
         p_comp_flange_crit = (sig_comp_flange_crit*2*self.I)/(self.height * load_d)
 
-        # P = ((2*I*4*(pi**2)*E)/(0.5*length*y*12*(1-mu**2)))*((flange_thickness/web_dist)**2); 
+        # P = ((2*I*4*(math.pi**2)*E)/(0.5*length*y*12*(1-mu**2)))*((flange_thickness/web_dist)**2); 
         # ^ that is how it was done previously...note how they did not divide? 
         #  σ = My/I = sig_comp_flange_crit, P = (2Iσ)/(height*load*d) -- M = load_d*(P/2)
         
         #pt. 2: the little flange bits that extend outside of the webs 
-        sig_comp_flange_flap_crit = ((0.425*(pi**2)*E)/(12*(1-mu**2)))*((self.flange_thickness/((self.flange_width-self.web_dist)/2))**2)
+        sig_comp_flange_flap_crit = ((0.425*(math.pi**2)*E)/(12*(1-mu**2)))*((self.flange_thickness/(self.flange_width-self.web_dist))**2)
         p_comp_flange_flap_crit = (sig_comp_flange_flap_crit*2*self.I)/(self.height * load_d)
 
 
         #pt 3: The web between y_bar and top 
-        sig_comp_web_crit = ((6*(pi**2)*E)/(12*(1-mu**2)))*((self.web_thickness/(self.height-self.y_bar-self.flange_thickness))**2)
+        sig_comp_web_crit = ((6*(math.pi**2)*E)/(12*(1-mu**2)))*((self.web_thickness/(self.height-self.y_bar-self.flange_thickness))**2)
         # we only want the max -> use y = y_top = height - flange_thickness
         p_comp_web_crit = (sig_comp_flange_flap_crit*2*self.I)/((self.height-self.flange_thickness) * load_d)
 
         #pt. 4: diaphragms 
-
-
         tau_crit_diaphragm = ((5*(math.pi**2)*E)/(12*(1-(mu**2))))
-        tau_crit_diaphragm *= ((self.web_thickness/(self.height-self.flange_thickness))**2 + (self.web_thickness/self.diaphragm_dist)**2)
+        tau_crit_diaphragm *= ((self.web_thickness/(self.height-self.flange_thickness))**2 + (self.web_thickness/self.diaphragm_dist))
         # τ = VQ/Ib
         p_diaphram_crit = 2*((tau_crit_diaphragm*self.I*self.web_thickness)/Q)
-        if show_calc:
-            print(p_diaphram_crit, p_comp_flange_crit, p_comp_flange_flap_crit, p_comp_web_crit)
 
         return min(p_diaphram_crit, p_comp_flange_crit, p_comp_flange_flap_crit, p_comp_web_crit)
-    def get_buckling_failure_2(self):
-        height = self.height
-        flange_width = self.flange_width
-        web_dist = self.web_dist
-        flange_thickness = self.flange_thickness
-        web_thickness = self.web_thickness
-        length = self.length
-        dia_dist = self.diaphragm_dist
-        pi = math.pi
 
-        I = self.get_I()
-        y = self.get_centroid()
-        Q = web_thickness*2*y*(y/2)
-
-        #pt. 1: Compressive flange
-        sig_comp_crit = ((4*(pi**2)*E)/(12*(1-mu**2)))*((flange_thickness/web_dist)**2);
-        P = ((2*I*4*(pi**2)*E)/(0.5*length*y*12*(1-mu**2)))*((flange_thickness/web_dist)**2);
-        P1 = P
-
-        #pt. 2: Flexural compression @ top of web
-        sig_comp_crit = ((6*(pi**2)*E)/(12*(1-mu**2)))*(( web_thickness /(height-y-flange_thickness))**2);
-        P = ((2*I*6*(pi**2)*E)/(0.5*length*y*12*(1-mu**2)))*(( web_thickness /(height-y-flange_thickness))**2);
-        P2 = P
-
-        #pt. 3: shear buckling the top of the web
-        Tau_crit = ((5*(pi**2)*E)/(12*(1-(mu**2))))*(((web_thickness/(height-flange_thickness))**2) + ((web_thickness/dia_dist)**2))
-        V = (Tau_crit*I*(2*web_thickness))/Q
-        P = V*2
-        P3 = P
-        # print("Tau_crit = ",Tau_crit)
-        # print("22x10^3,",Q)
-        print(P1, P2, P3)
-
-        return min(P1, P2, P3)
     def is_valid(self, show_calc=False):
-        global total_matboard
+        global total_matboard, support_height
+        
         bridge_matboard = self.num_flange_layers * self.flange_width * self.length # flange
         bridge_matboard += 2 * self.num_web_layers * (self.height - self.flange_thickness) * self.length # web
         bridge_matboard += self.flange_width*(self.height-self.flange_thickness)*(self.length//self.diaphragm_dist) # diaphragms
+        bridge_matboard += 4 * self.num_column_layers *  support_height * self.column_sidelength 
 
-        if total_matboard < bridge_matboard:
-                # print("not enough board!")
+        if total_matboard < bridge_matboard
+                print("not enough board!")
                 return False
         if self.flange_width < self.web_dist:
-                # print("spatial wack")
+                print("spatial wack")
                 return False
         return True
 
     def get_max_load(self, show_calc=False):
-        if show_calc:
-            print(self.get_max_P_shear())
-            print(self.get_max_P_flexural())
-            print(self.get_buckling_failure())
         return min(self.get_max_P_shear(), self.get_max_P_flexural(), self.get_buckling_failure())
 
     def report(self, show_calc=False):
@@ -315,6 +306,8 @@ class Bridge:
         print("Diaphragm Distance: ",self.diaphragm_dist)
         print("Flange Thickness: ",self.flange_thickness)
         print("Web Thickness: ",self.web_thickness)
+        print("Column Thickness: ", self.column_thickness)
+        print("column_sidelength: ", self.column_sidelength)
         print("---------")
         print("Total load bearing ability: ",self.get_max_load())
         print("is valid?: ", self.is_valid())
